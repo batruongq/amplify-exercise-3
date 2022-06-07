@@ -54,7 +54,7 @@ app.get('/employees', async function(req, res) {
 
   try {
     const result = await client.query(query);
-
+    
     res.json({
       rows: result.rows
     })
@@ -95,7 +95,6 @@ app.post('/employees/:id/cancelLunch', async function(req, res) {
   const employeeId = req.params.id;
 
   const cancelStatus = status === 'off' ? 'off' : 'on';
-  console.log('cancelStatus', cancelStatus)
 
   const registerStatusQuery = `INSERT INTO tblLunchRegisterStatus(employee_id, status) VALUES
     (${employeeId}, '${cancelStatus}')
@@ -104,9 +103,7 @@ app.post('/employees/:id/cancelLunch', async function(req, res) {
       status = EXCLUDED.status`
 
   try {
-    const rs = await client.query(registerStatusQuery)
-
-    console.log('rs', rs);
+    await client.query(registerStatusQuery)
   } catch(err) {
     client.end
 
