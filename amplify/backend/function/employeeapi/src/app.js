@@ -6,12 +6,19 @@ or in the "license" file accompanying this file. This file is distributed on an 
 See the License for the specific language governing permissions and limitations under the License.
 */
 
-
-
-
 const express = require('express')
 const bodyParser = require('body-parser')
 const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware')
+const { Client } = require('pg');
+
+const client = new Client({
+  host: 'queenie.db.elephantsql.com',
+  user: 'krclxzgk',
+  port: 5432,
+  password: 'WdL01QuPvrAsA-475CIPGcH4D7naUO80',
+  database: 'krclxzgk'
+})
+client.connect()
 
 // declare a new express app
 const app = express()
@@ -25,34 +32,112 @@ app.use(function(req, res, next) {
   next()
 });
 
+// app.listen(8080);
 
 /**********************
- * Example get method *
+ * Get employee method *
+ * Support filter the employees that has the specific cancel date
  **********************/
 
-app.get('/employees', function(req, res) {
-  // Add your code here
-  res.json({success: 'get call succeed!', url: req.url});
-});
+app.get('/employees', async function(req, res) {
+  const queryParams = req.query
 
-app.get('/employees/*', function(req, res) {
-  // Add your code here
-  res.json({success: 'get call succeed!', url: req.url});
+  let query = `SELECT * from tblEmployees`
+
+  if (queryParams && queryParams.cancelDate) {
+    query = `SELECT t1.* 
+      FROM tblEmployees t1
+      LEFT JOIN tblLunchRegisterStatus t2 on t2.employee_id = t1.id
+      LEFT JOIN tblLunchCancelRegister t3 on t3.employee_id = t1.id AND t3.cancelDate = '${queryParams.cancelDate}'
+      WHERE t2.status = 'off' OR t3.id IS NOT NULL`;
+  }
+
+  try {
+    const result = await client.query(query);
+
+    res.json({
+      rows: result.rows
+    })
+  } catch(err) {
+    res.json(err)
+  }
+
+  client.end
 });
 
 /****************************
-* Example post method *
+* Add employee method *
 ****************************/
 
-app.post('/employees', function(req, res) {
-  // Add your code here
-  res.json({success: 'post call succeed!', url: req.url, body: req.body})
+app.post('/employees', async function(req, res) {
+  const user = req.body;
+  const query = `INSERT INTO tblEmployees(name) values ('${user.name}')`;
+
+  try {
+    await client.query(query)
+
+    res.json({
+      message: 'Add employee successfully'
+    })
+  } catch(err) {
+    res.json(err)
+  }
+
+  client.end
+  
 });
 
-app.post('/employees/*', function(req, res) {
-  // Add your code here
-  res.json({success: 'post call succeed!', url: req.url, body: req.body})
+/****************************
+* Set cancel lunch for employee *
+****************************/
+app.post('/employees/:id/cancelLunch', async function(req, res) {
+  const {status, cancelDates} = req.body;
+  const employeeId = req.params.id;
+
+  const cancelStatus = status === 'off' ? 'off' : 'on';
+  console.log('cancelStatus', cancelStatus)
+
+  const registerStatusQuery = `INSERT INTO tblLunchRegisterStatus(employee_id, status) VALUES
+    (${employeeId}, '${cancelStatus}')
+    ON CONFLICT (employee_id)
+    DO UPDATE SET
+      status = EXCLUDED.status`
+
+  try {
+    const rs = await client.query(registerStatusQuery)
+
+    console.log('rs', rs);
+  } catch(err) {
+    client.end
+
+    return res.json(err)
+  }
+
+  // If employees just cancel some dates, update the cancel dates 
+  if (cancelStatus === 'on') {
+    
+    const valueInsert = cancelDates.map(value =>
+      `(${employeeId}, '${value}')`
+    )
+    const query = `INSERT INTO tblLunchCancelRegister(employee_id, cancelDate) VALUES
+      ${valueInsert.join(', ')}`
+
+    try {
+      await client.query(query)
+    } catch(err) {
+      client.end
+
+      return res.json(err)
+    }
+  }
+
+  res.json({
+    message: 'Set cancel lunch successfully'
+  })
+  
+  client.end
 });
+
 
 /****************************
 * Example put method *
