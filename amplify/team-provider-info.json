@@ -18,7 +18,8 @@
       "function": {
         "employeeapi": {
           "deploymentBucketName": "amplify-amplifyexercise3-dev-185307-deployment",
-          "s3Key": "amplify-builds/employeeapi-6c466b36753879324e61-build.zip"
+          "s3Key": "amplify-builds/employeeapi-6c466b36753879324e61-build.zip",
+          "testEnv": "Just for test"
         }
       }
     }
