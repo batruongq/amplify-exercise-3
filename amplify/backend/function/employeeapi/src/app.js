@@ -12,11 +12,11 @@ const awsServerlessExpressMiddleware = require('aws-serverless-express/middlewar
 const { Client } = require('pg');
 
 const client = new Client({
-  host: 'queenie.db.elephantsql.com',
-  user: 'krclxzgk',
-  port: 5432,
-  password: 'WdL01QuPvrAsA-475CIPGcH4D7naUO80',
-  database: 'krclxzgk'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  port: process.env.DB_PORT,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 })
 client.connect()
 
